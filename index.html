@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16130F">
+<title>삼성전자 내 평단 계산기</title>
+<style>
+@font-face{font-family:"Pretendard Variable";font-weight:45 920;font-style:normal;font-display:swap;src:url("fonts/PretendardVariable.woff2") format("woff2-variations")}
+:root{
+  --bg:#16130F; --card:#221E18; --card-2:#2B261E; --ink:#F6F1E8; --dim:#BFB8AA; --faint:#8C8678;
+  --line:rgba(255,255,255,.14); --line-soft:rgba(255,255,255,.08);
+  --accent:#4DA3FF; --accent-ink:#0B1220; --accent-soft:rgba(77,163,255,.15);
+  --up:#FF5C5C; --down:#6FA0FF; --sim:#FFB84D;
+  --r:16px; --r-s:12px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  font-size:15px;line-height:1.5;letter-spacing:-.01em;-webkit-font-smoothing:antialiased;
+  padding:0 16px calc(32px + env(safe-area-inset-bottom));}
+.app{max-width:440px;margin:0 auto}
+.num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+
+/* 헤더 */
+.head{display:flex;justify-content:space-between;align-items:flex-end;padding:24px 0 16px}
+.head .nm{font-size:22px;font-weight:700;letter-spacing:-.03em;line-height:1.2}
+.head .sub{margin-top:4px;font-size:13px;color:var(--dim)}
+.head .px{text-align:right}
+.head .px b{display:block;font-size:24px;font-weight:700;line-height:1.2}
+.head .px span{font-size:13px;font-weight:600}
+.up{color:var(--up)} .down{color:var(--down)}
+
+/* 카드 */
+.card{background:var(--card);border:1px solid var(--line-soft);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.card h2{margin:0 0 16px;font-size:15px;font-weight:700;letter-spacing:-.02em}
+.row-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.row-h h2{margin:0}
+
+/* 입력 */
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-s);padding:8px 12px 8px;display:block;transition:border-color .15s}
+.field.full{grid-column:1 / -1}
+.field:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.field label{display:block;font-size:12px;color:var(--dim);font-weight:500}
+.field .in{display:flex;align-items:baseline;gap:4px}
+.field input{flex:1;min-width:0;width:100%;background:none;border:0;outline:0;color:var(--ink);font:inherit;font-size:20px;font-weight:600;padding:4px 0 0;font-variant-numeric:tabular-nums}
+.field input::placeholder{color:var(--faint);font-weight:500}
+.field .u{font-size:14px;color:var(--dim)}
+.ex-btn{margin-top:12px;background:none;border:0;color:var(--accent);font:inherit;font-size:13px;font-weight:600;padding:8px 0;cursor:pointer}
+
+/* 결과 타일 */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.tile{background:var(--card);border:1px solid var(--line-soft);border-radius:var(--r-s);padding:12px 12px 12px}
+.tile .k{font-size:12px;color:var(--dim)}
+.tile .v{margin-top:4px;font-size:18px;font-weight:700;line-height:1.25;white-space:nowrap}
+.tile .s{margin-top:2px;font-size:12px;color:var(--faint);white-space:nowrap}
+.tile .v.empty{color:var(--faint)}
+
+/* 차트 */
+.seg{display:inline-flex;background:var(--bg);border:1px solid var(--line-soft);border-radius:999px;padding:2px}
+.seg button{background:none;border:0;color:var(--dim);font:inherit;font-size:12px;font-weight:600;padding:4px 12px;border-radius:999px;cursor:pointer;min-height:28px}
+.seg button[aria-pressed="true"]{background:var(--card-2);color:var(--ink)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin:-4px 0 8px;min-height:18px}
+.legend i{display:inline-block;width:16px;height:0;border-top:2px solid var(--ink);vertical-align:middle;margin-right:6px}
+.legend i.dash{border-top-style:dashed}
+.legend i.sim{border-top-color:var(--sim)}
+#chart{width:100%;height:248px;position:relative}
+#chart svg{display:block;width:100%;height:100%;overflow:visible}
+.chart-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:13px}
+
+/* 시뮬레이터 */
+.sim-grid{display:grid;grid-template-columns:1fr;gap:16px}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper .field{flex:1}
+.stepper button{width:48px;height:48px;border-radius:var(--r-s);border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:22px;font-weight:500;line-height:1;cursor:pointer;flex:none}
+.stepper button:active{background:var(--card-2)}
+.pct-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.pct-row .k{font-size:12px;color:var(--dim)}
+.pct-row b{font-size:22px;font-weight:700}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:32px;background:none;margin:0;--p:50%}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(to right,var(--accent) 0 var(--p),var(--line) var(--p) 100%)}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--line)}
+input[type=range]::-moz-range-progress{height:6px;border-radius:3px;background:var(--accent)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--ink);border:0;margin-top:-9px;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--ink);border:0}
+input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:4px}
+.res{border-top:1px solid var(--line-soft);margin-top:16px;padding-top:8px}
+.res .r{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0}
+.res .r .k{font-size:13px;color:var(--dim)}
+.res .r .v{font-size:16px;font-weight:600;text-align:right}
+.res .r .v small{display:block;font-size:12px;font-weight:500;color:var(--faint)}
+.res .r.big .v{font-size:20px;font-weight:700}
+.res .r .v .sim-c{color:var(--sim)}
+.note{margin:8px 0 0;font-size:12px;color:var(--faint)}
+
+.foot{font-size:12px;color:var(--faint);line-height:1.6;padding:0 4px}
+.foot p{margin:0 0 8px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="head">
+    <div>
+      <div class="nm">삼성전자</div>
+      <div class="sub num" id="asof">시세 불러오는 중</div>
+    </div>
+    <div class="px"><b class="num" id="px">–</b><span class="num" id="chg"></span></div>
+  </header>
+
+  <section class="card" aria-label="내 보유 입력">
+    <h2>내 보유 내역</h2>
+    <div class="fields">
+      <div class="field full"><label for="avg">평단가</label>
+        <div class="in"><input id="avg" class="num" inputmode="numeric" autocomplete="off" placeholder="예) 300,000"><span class="u">원</span></div></div>
+      <div class="field"><label for="qty">수량</label>
+        <div class="in"><input id="qty" class="num" inputmode="numeric" autocomplete="off" placeholder="예) 30"><span class="u">주</span></div></div>
+      <div class="field"><label for="seed">여유 시드</label>
+        <div class="in"><input id="seed" class="num" inputmode="numeric" autocomplete="off" placeholder="예) 1,000만"><span class="u">원</span></div></div>
+    </div>
+    <button class="ex-btn" id="ex" type="button">예시 값 넣어 보기</button>
+  </section>
+
+  <section class="tiles" aria-label="계산 결과">
+    <div class="tile"><div class="k">평단 대비</div><div class="v num empty" id="t1">–</div><div class="s num" id="t1s">&nbsp;</div></div>
+    <div class="tile"><div class="k">평가손익</div><div class="v num empty" id="t2">–</div><div class="s">원</div></div>
+    <div class="tile"><div class="k">현재 비중</div><div class="v num empty" id="t3">–</div><div class="s">시드 포함</div></div>
+  </section>
+
+  <section class="card" aria-label="일봉 차트">
+    <div class="row-h">
+      <h2>일봉 차트</h2>
+      <div class="seg" role="group" aria-label="기간">
+        <button type="button" data-n="60" aria-pressed="false">3개월</button>
+        <button type="button" data-n="120" aria-pressed="true">6개월</button>
+        <button type="button" data-n="244" aria-pressed="false">1년</button>
+      </div>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div id="chart"></div>
+  </section>
+
+  <section class="card" aria-label="평단 변화 계산">
+    <h2>여유 시드를 쓰면 평단이 어떻게 바뀔까</h2>
+    <div class="sim-grid">
+      <div>
+        <div class="stepper">
+          <button type="button" id="bm" aria-label="매수가 한 호가 내리기">−</button>
+          <div class="field"><label for="buy">가정 매수가</label>
+            <div class="in"><input id="buy" class="num" inputmode="numeric" autocomplete="off" placeholder="현재가"><span class="u">원</span></div></div>
+          <button type="button" id="bp" aria-label="매수가 한 호가 올리기">+</button>
+        </div>
+      </div>
+      <div>
+        <div class="pct-row"><span class="k">여유 시드 중 사용 비율</span><b class="num" id="pctv">50%</b></div>
+        <input type="range" id="pct" min="0" max="100" step="10" value="50" aria-label="사용 비율">
+      </div>
+    </div>
+    <div class="res" id="res">
+      <div class="r"><span class="k">추가 수량</span><span class="v num" id="r1">–</span></div>
+      <div class="r big"><span class="k">새 평단</span><span class="v num" id="r2">–</span></div>
+      <div class="r"><span class="k">새 비중</span><span class="v num" id="r3">–</span></div>
+    </div>
+    <p class="note">가정한 가격으로 계산한 값입니다. 수수료·세금은 빠져 있습니다.</p>
+  </section>
+
+  <footer class="foot">
+    <p>입력한 값은 이 기기 안에서만 계산하며, 어디에도 저장하거나 보내지 않습니다.</p>
+    <p>계산 참고용 도구이며 투자 권유가 아닙니다. 시세는 일봉 종가 기준이라 실제 체결가와 다를 수 있습니다.</p>
+    <p id="src"></p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var D = null;              // window.PRICE_DATA
+  var range = 120;           // 차트 표시 일수
+  var fmt = function(n){ return Math.round(n).toLocaleString("ko-KR"); };
+  var sgn = function(n,d){ var s = n.toFixed(d==null?1:d); return (n>0?"+":(n<0?"−":""))+s.replace("-",""); };
+  var digits = function(s){ return (s||"").replace(/[^0-9]/g,""); };
+  var num = function(id){ var d = digits($(id).value); return d ? parseInt(d,10) : 0; };
+
+  /* 텔레그램 안에서만 텔레그램 스크립트를 부른다 */
+  var tg = null;
+  if (/tgWebApp/.test(location.hash) || /Telegram/i.test(navigator.userAgent)) {
+    var ts = document.createElement("script");
+    ts.src = "https://telegram.org/js/telegram-web-app.js";
+    ts.onload = function(){
+      try{
+        tg = window.Telegram && window.Telegram.WebApp;
+        if (tg){ tg.ready(); tg.expand(); tg.setHeaderColor("#16130F"); tg.setBackgroundColor("#16130F"); }
+      }catch(e){}
+    };
+    document.head.appendChild(ts);
+  }
+
+  /* 호가 단위 (한국거래소) */
+  function tick(p){
+    return p<2000?1:p<5000?5:p<20000?10:p<50000?50:p<200000?100:p<500000?500:1000;
+  }
+
+  /* 입력 칸: 숫자만, 천 단위 쉼표, 커서 위치 유지 */
+  ["avg","qty","seed","buy"].forEach(function(id){
+    var el = $(id);
+    el.addEventListener("input", function(){
+      var pos = el.selectionStart, before = digits(el.value.slice(0,pos)).length;
+      var d = digits(el.value).replace(/^0+(?=\d)/,"");
+      el.value = d ? parseInt(d,10).toLocaleString("ko-KR") : "";
+      var c=0,i=0; for(; i<el.value.length && c<before; i++){ if(/\d/.test(el.value[i])) c++; }
+      try{ el.setSelectionRange(i,i); }catch(e){}
+      update();
+    });
+  });
+
+  /* 데이터 */
+  function loadData(){
+    var s = document.createElement("script");
+    s.src = "data/005930.js?v=" + Math.floor(Date.now()/3600000);
+    s.onload = function(){ D = window.PRICE_DATA; init(); };
+    s.onerror = function(){
+      $("asof").textContent = "시세를 불러오지 못했습니다";
+      $("chart").innerHTML = '<div class="chart-msg">시세를 불러오지 못했습니다. 잠시 뒤 다시 열어 주세요.</div>';
+      update();
+    };
+    document.head.appendChild(s);
+  }
+  function last(){ return D.bars[D.bars.length-1]; }
+  function prevClose(){ return D.bars[D.bars.length-2][4]; }
+
+  function init(){
+    var P = last()[4], ch = (P/prevClose()-1)*100;
+    $("px").textContent = fmt(P);
+    var c = $("chg"); c.textContent = sgn(ch,1)+"%"; c.className = "num "+(ch>0?"up":ch<0?"down":"");
+    var a = D.asof || last()[0];
+    $("asof").textContent = "005930 · " + a.slice(5,7).replace(/^0/,"")+"월 "+a.slice(8,10).replace(/^0/,"")+"일 종가";
+    $("src").textContent = "시세 출처: " + D.source + " (" + a + " 종가, 하루 한 번 갱신)";
+    $("buy").placeholder = fmt(P);
+    update();
+  }
+
+  /* 계산 */
+  var st = {};
+  function update(){
+    var A = num("avg"), Q = num("qty"), S = num("seed");
+    var P = D ? last()[4] : 0;
+    var ok = D && A>0 && Q>0;
+    var t1=$("t1"), t2=$("t2"), t3=$("t3");
+    if (ok){
+      var ret = (P/A-1)*100, pl = (P-A)*Q, val = P*Q, w = val/(val+S)*100;
+      t1.textContent = sgn(ret,1)+"%"; t1.className = "v num "+(ret>0?"up":ret<0?"down":"");
+      $("t1s").textContent = "평단 " + fmt(A);
+      t2.textContent = (pl>0?"+":pl<0?"−":"")+fmt(Math.abs(pl)); t2.className = "v num "+(pl>0?"up":pl<0?"down":"");
+      t3.textContent = (val+S>0 ? w.toFixed(0)+"%" : "–"); t3.className = "v num"+(val+S>0?"":" empty");
+    } else {
+      [t1,t2,t3].forEach(function(t){ t.textContent="–"; t.className="v num empty"; });
+      $("t1s").innerHTML = "&nbsp;";
+    }
+
+    /* 시뮬레이터 */
+    var B = num("buy") || P, pct = parseInt($("pct").value,10);
+    $("pctv").textContent = pct + "%";
+    $("pct").style.setProperty("--p", pct+"%");
+    st.newAvg = null;
+    var r1=$("r1"), r2=$("r2"), r3=$("r3");
+    if (ok && B>0){
+      var spend = S*pct/100, q = Math.floor(spend/B), cost = q*B, nQ = Q+q;
+      var nA = (A*Q+cost)/nQ, dA = (nA/A-1)*100;
+      var nw = P*nQ/(P*nQ + (S-cost))*100;
+      r1.innerHTML = fmt(q)+"주<small>"+fmt(cost)+"원 사용</small>";
+      r2.innerHTML = '<span class="sim-c">'+fmt(nA)+"원</span><small>"+fmt(A)+"원 → "+(q>0?sgn(dA,1)+"%":"변화 없음")+"</small>";
+      r3.innerHTML = nw.toFixed(0)+"%<small>지금 "+(P*Q+S>0?(P*Q/(P*Q+S)*100).toFixed(0):"0")+"%</small>";
+      if (q>0) st.newAvg = nA;
+    } else {
+      r1.textContent = r2.textContent = r3.textContent = "–";
+    }
+    st.avg = ok ? A : null;
+    drawChart();
+  }
+
+  /* 차트 */
+  var NS = "http://www.w3.org/2000/svg";
+  function niceStep(span, n){
+    var raw = span/n, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw/p;
+    return (f<1.5?1:f<3.5?2:f<7.5?5:10)*p;
+  }
+  function drawChart(){
+    var box = $("chart");
+    if (!D){ return; }
+    var W = box.clientWidth, H = 248; if (!W) return;
+    var bars = D.bars.slice(-range), n = bars.length;
+    var padL=4, padR=56, padT=8, padB=24, pw = W-padL-padR, ph = H-padT-padB;
+    var lo = Infinity, hi = -Infinity;
+    bars.forEach(function(b){ if(b[3]<lo) lo=b[3]; if(b[2]>hi) hi=b[2]; });
+    var span0 = hi-lo;
+    /* 평단선은 화면 범위에서 크게 벗어나지 않을 때만 눈금에 포함 */
+    var lines = [];
+    function addLine(val, kind){
+      if (val==null) return;
+      var inside = val >= lo-span0*0.6 && val <= hi+span0*0.6;
+      lines.push({v:val, kind:kind, out: !inside});
+      if (inside){ if(val<lo) lo=val; if(val>hi) hi=val; }
+    }
+    addLine(st.avg,"avg"); addLine(st.newAvg,"sim");
+    var span = hi-lo; lo -= span*0.04; hi += span*0.04;
+    var y = function(v){ return padT + (hi-v)/(hi-lo)*ph; };
+    var x = function(i){ return padL + (i+0.5)*pw/n; };
+    var step = pw/n, bw = Math.max(1.5, Math.floor(step*0.62*2)/2);
+
+    var g = '';
+    /* 눈금 */
+    var ts = niceStep(hi-lo, 4), first = Math.ceil(lo/ts)*ts, cur = last()[4];
+    var chips = [{v:cur, kind:"cur"}].concat(lines.map(function(l){ return {v:l.out ? (l.v<lo?lo:hi) : l.v, kind:l.kind, real:l.v, out:l.out}; }));
+    for (var t=first; t<=hi; t+=ts){
+      var yy = y(t), near = chips.some(function(c){ return Math.abs(y(c.v)-yy) < 13; });
+      g += '<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+yy+'" y2="'+yy+'" stroke="rgba(255,255,255,.07)" stroke-width="1"/>';
+      if (!near) g += '<text x="'+(W-padR+8)+'" y="'+(yy+4)+'" fill="#8C8678" font-size="11" class="num">'+fmt(t)+'</text>';
+    }
+    /* x 라벨: 달이 바뀌는 자리, 간격 확보 */
+    var lastX = -99, prevM = bars[0][0].slice(5,7);
+    for (var i=1;i<n;i++){
+      var m = bars[i][0].slice(5,7);
+      if (m!==prevM){
+        prevM = m; var xx = x(i);
+        if (xx-lastX >= 56 && xx < W-padR-16){
+          lastX = xx;
+          g += '<line x1="'+xx+'" x2="'+xx+'" y1="'+(H-padB)+'" y2="'+(H-padB+4)+'" stroke="rgba(255,255,255,.2)"/>';
+          g += '<text x="'+xx+'" y="'+(H-6)+'" fill="#8C8678" font-size="11" text-anchor="middle">'+parseInt(m,10)+'월</text>';
+        }
+      }
+    }
+    /* 캔들 */
+    bars.forEach(function(b,i){
+      var up = b[4]>=b[1], col = up ? "#FF5C5C" : "#6FA0FF", cx = x(i);
+      var yo=y(b[1]), yc=y(b[4]), top=Math.min(yo,yc), h=Math.max(1,Math.abs(yo-yc));
+      g += '<line x1="'+cx+'" x2="'+cx+'" y1="'+y(b[2])+'" y2="'+y(b[3])+'" stroke="'+col+'" stroke-width="1"/>';
+      g += '<rect x="'+(cx-bw/2)+'" y="'+top+'" width="'+bw+'" height="'+h+'" fill="'+col+'"/>';
+    });
+    /* 현재가 점선 */
+    g += '<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+y(cur)+'" y2="'+y(cur)+'" stroke="rgba(255,255,255,.35)" stroke-width="1" stroke-dasharray="1 4" stroke-linecap="round"/>';
+    /* 평단선 */
+    lines.forEach(function(l){
+      if (l.out) return;
+      var col = l.kind==="avg" ? "#F6F1E8" : "#FFB84D", yy = y(l.v);
+      g += '<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+yy+'" y2="'+yy+'" stroke="'+col+'" stroke-width="1.5" stroke-dasharray="6 4"/>';
+    });
+    /* 오른쪽 칩 (겹치면 위아래로 밀어 냄) */
+    var cs = chips.slice().sort(function(a,b){ return y(a.v)-y(b.v); });
+    var ys = cs.map(function(c){ return y(c.v); });
+    for (var k=1;k<ys.length;k++) if (ys[k]-ys[k-1] < 18) ys[k] = ys[k-1]+18;
+    var maxY = H-padB-9;
+    if (ys.length && ys[ys.length-1] > maxY){
+      ys[ys.length-1] = maxY;
+      for (var j=ys.length-2;j>=0;j--) if (ys[j+1]-ys[j] < 18) ys[j] = ys[j+1]-18;
+    }
+    cs.forEach(function(c,k){
+      var fill = c.kind==="cur" ? "#3A352B" : c.kind==="avg" ? "#F6F1E8" : "#FFB84D";
+      var tc = c.kind==="cur" ? "#F6F1E8" : "#16130F";
+      var val = c.out ? c.real : c.v, arrow = c.out ? (c.real<lo?"▼ ":"▲ ") : "";
+      g += '<rect x="'+(W-padR+2)+'" y="'+(ys[k]-9)+'" width="'+(padR-2)+'" height="18" rx="4" fill="'+fill+'"'+(c.kind==="cur"?' stroke="rgba(255,255,255,.3)"':'')+'/>';
+      g += '<text x="'+(W-padR+2+(padR-2)/2)+'" y="'+(ys[k]+4)+'" fill="'+tc+'" font-size="11" font-weight="700" text-anchor="middle" class="num">'+arrow+fmt(val)+'</text>';
+    });
+    box.innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="삼성전자 일봉 차트">'+g+'</svg>';
+
+    var lg = '';
+    if (st.avg) lg += '<span><i></i>내 평단</span>';
+    if (st.newAvg) lg += '<span><i class="sim dash"></i>새 평단</span>';
+    $("legend").innerHTML = lg;
+  }
+
+  /* 기간 */
+  Array.prototype.forEach.call(document.querySelectorAll(".seg button"), function(b){
+    b.addEventListener("click", function(){
+      range = parseInt(b.getAttribute("data-n"),10);
+      Array.prototype.forEach.call(document.querySelectorAll(".seg button"), function(x){ x.setAttribute("aria-pressed", x===b?"true":"false"); });
+      drawChart();
+    });
+  });
+
+  /* 매수가 호가 이동 */
+  function stepBuy(dir){
+    var P = last()[4], B = num("buy") || P, t = tick(B);
+    if (dir<0 && B<=t) return;
+    B = dir>0 ? Math.floor(B/t)*t + t : Math.ceil(B/t)*t - t;
+    $("buy").value = B.toLocaleString("ko-KR"); update();
+  }
+  $("bp").addEventListener("click", function(){ if(D) stepBuy(1); });
+  $("bm").addEventListener("click", function(){ if(D) stepBuy(-1); });
+  $("pct").addEventListener("input", update);
+
+  /* 예시 값 */
+  function fillExample(){
+    $("avg").value = "300,000"; $("qty").value = "30"; $("seed").value = "10,000,000"; $("buy").value = "";
+    $("pct").value = 50; update();
+  }
+  $("ex").addEventListener("click", fillExample);
+  if (/[?&]demo=1/.test(location.search)) window.addEventListener("load", function(){ var t=setInterval(function(){ if(D){ clearInterval(t); fillExample(); } },50); });
+
+  var rt; window.addEventListener("resize", function(){ clearTimeout(rt); rt = setTimeout(drawChart, 100); });
+  loadData();
+})();
+</script>
+</body>
+</html>
