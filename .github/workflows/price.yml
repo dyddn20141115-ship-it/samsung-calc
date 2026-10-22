@@ -1,0 +1,25 @@
+# 하루 한 번 종가 반영: 장 마감 뒤(한국 16:30) 일봉을 새로 받아 data/005930.js 를 갈아 끼운다.
+# 야후가 막히면 이 작업만 실패하고 전날 파일이 그대로 남는다(화면에 기준일이 찍힌다).
+name: price-refresh
+on:
+  schedule:
+    - cron: "30 7 * * 1-5"      # UTC 07:30 = KST 16:30
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: repo-write
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python scripts/make_price_data.py 005930.KS 삼성전자 -o data/005930.js
+      - name: 바뀐 게 있으면 올린다
+        run: |
+          git config user.name "price-bot"; git config user.email "bot@users.noreply.github.com"
+          git add data/005930.js
+          git diff --cached --quiet || (git commit -m "price: 삼성전자 일봉 갱신" && git push)
